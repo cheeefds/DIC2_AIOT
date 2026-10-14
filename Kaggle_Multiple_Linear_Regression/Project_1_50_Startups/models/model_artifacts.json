@@ -1,0 +1,35 @@
+{
+    "model_name": "Multiple Linear Regression",
+    "dataset": "50 Startups",
+    "selected_features": [
+        "R&D Spend",
+        "Administration",
+        "Marketing Spend"
+    ],
+    "encoded_columns": [
+        "R&D Spend",
+        "Administration",
+        "Marketing Spend"
+    ],
+    "coefficients": [
+        38014.73625775007,
+        -1841.4757823345774,
+        3543.3862816920023
+    ],
+    "intercept": 115651.72050000001,
+    "scaler_mean": [
+        77687.8455,
+        121142.92275,
+        235747.08100000006
+    ],
+    "scaler_scale": [
+        47294.99429798803,
+        27108.761580023165,
+        113419.04441256064
+    ],
+    "test_metrics": {
+        "r2": 0.900065308303732,
+        "mae": 6979.152252370404,
+        "rmse": 8995.905803361416
+    }
+}
