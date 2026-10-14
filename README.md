@@ -1,14 +1,30 @@
-# 多元線性迴歸作業
+# 多元線性迴歸雙專題
 
-本資料夾包含兩個多元線性迴歸專題，以及一個可部署至 GitHub Pages 的互動式成果網站。
+本資料夾包含兩個多元線性迴歸專題，以及一個部署於 GitHub Pages 的互動式成果網站。網站可透過上方下拉選單切換 `Project 1：50 Startups` 與 `Project 2：Boston Housing`。
+
+## 線上成果網站
+
+**[開啟互動式預測網站](https://cheeefds.github.io/DIC2_AIOT/)**
+
+### Project 2：Boston Housing
+
+使用多元線性迴歸模型，呈現波士頓住宅價值預測、模型評估指標與互動式特徵控制。
+
+![Project 2：Boston Housing 互動式住宅價值預測](docs/images/project2-boston-housing.png)
+
+### Project 1：50 Startups
+
+使用多元線性迴歸模型，呈現新創公司利潤預測、特徵影響與模型比較結果。
+
+![Project 1：50 Startups 互動式利潤預測](docs/images/project1-50-startups.png)
 
 ## 專案內容
 
 | 資料夾 | 說明 |
 | --- | --- |
-| `Project_1_50_Startups/` | 50 Startups 資料分析、特徵選擇與模型評估 |
-| `Project_2_Boston_Housing/` | Boston Housing 資料分析、特徵選擇與模型評估 |
-| `selected_project_web/` | Boston Housing 互動式預測與成果展示網站 |
+| `Kaggle_Multiple_Linear_Regression/Project_1_50_Startups/` | 50 Startups 資料分析、特徵選擇與模型評估 |
+| `Kaggle_Multiple_Linear_Regression/Project_2_Boston_Housing/` | Boston Housing 資料分析、特徵選擇與模型評估 |
+| `Kaggle_Multiple_Linear_Regression/selected_project_web/` | 可切換兩個專題的互動式預測與成果展示網站 |
 
 ## 網站本機預覽
 
@@ -18,7 +34,7 @@ npm ci
 npm run dev
 ```
 
-接著開啟 <http://localhost:3000>。詳細建置與驗證方式請參考 [`selected_project_web/README.md`](selected_project_web/README.md)。
+接著開啟 <http://localhost:3000>。詳細建置與驗證方式請參考 [`selected_project_web/README.md`](Kaggle_Multiple_Linear_Regression/selected_project_web/README.md)。
 
 ## 部署到 GitHub Pages
 
@@ -53,7 +69,7 @@ https://<你的帳號>.github.io/<repository名稱>/
 兩個分析專案各自提供 `requirements.txt`：
 
 ```powershell
-cd Project_2_Boston_Housing
+cd Kaggle_Multiple_Linear_Regression\Project_2_Boston_Housing
 python -m pip install -r requirements.txt
 python main.py
 ```
