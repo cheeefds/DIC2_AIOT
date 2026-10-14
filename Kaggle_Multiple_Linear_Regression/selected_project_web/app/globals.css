@@ -57,6 +57,49 @@ html {
   padding: 32px 24px;
 }
 
+.problem-switcher-shell {
+  width: min(calc(100% - 48px), 1440px);
+  margin: 24px auto 0;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.88);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22);
+}
+
+.problem-switcher-shell label {
+  flex: 0 0 auto;
+  color: #7dd3fc;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.problem-switcher-shell select {
+  min-width: 250px;
+  padding: 9px 36px 9px 12px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 9px;
+  background: #111827;
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.problem-switcher-shell select:focus-visible {
+  outline: 3px solid rgba(56, 189, 248, 0.45);
+  outline-offset: 3px;
+}
+
+.problem-switcher-shell span {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
 .workspace-grid {
   display: grid;
   grid-template-columns: minmax(340px, 1.3fr) minmax(320px, 1fr);
@@ -216,6 +259,18 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 @media (max-width: 640px) {
+  .problem-switcher-shell {
+    width: calc(100% - 28px);
+    align-items: stretch;
+    flex-direction: column;
+    margin-top: 14px;
+  }
+
+  .problem-switcher-shell select {
+    width: 100%;
+    min-width: 0;
+  }
+
   .page-shell {
     padding: 22px 14px;
   }

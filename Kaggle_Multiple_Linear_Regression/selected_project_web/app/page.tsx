@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import modelData from '@/model/model_data.json';
+import bostonModelData from '@/model/model_data.json';
+import startupModelData from '@/model/project1_model_data.json';
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const imagePath = (fileName: string) => `${basePath}/images/${fileName}`;
@@ -19,6 +20,36 @@ interface FeatureMeta {
 }
 
 const FEATURE_METADATA: Record<string, FeatureMeta> = {
+  'R&D Spend': {
+    name: 'R&D Spend',
+    label: '研發支出',
+    category: '營運支出',
+    min: 0,
+    max: 165350,
+    step: 1000,
+    unit: '美元',
+    description: '投入產品研發與技術創新的年度支出。',
+  },
+  Administration: {
+    name: 'Administration',
+    label: '行政管理支出',
+    category: '營運支出',
+    min: 51280,
+    max: 182650,
+    step: 1000,
+    unit: '美元',
+    description: '公司行政、法務與日常營運的年度支出。',
+  },
+  'Marketing Spend': {
+    name: 'Marketing Spend',
+    label: '行銷支出',
+    category: '營運支出',
+    min: 0,
+    max: 471800,
+    step: 1000,
+    unit: '美元',
+    description: '市場開拓、廣告與推廣活動的年度支出。',
+  },
   RM: {
     name: 'RM',
     label: '每戶平均房間數',
@@ -122,7 +153,9 @@ const FEATURE_METADATA: Record<string, FeatureMeta> = {
 };
 
 // Preset scenarios for interactive exploration
-const PRESETS: Record<string, { label: string; values: Record<string, number> }> = {
+type PresetMap = Record<string, { label: string; values: Record<string, number> }>;
+
+const BOSTON_PRESETS: PresetMap = {
   average: {
     label: '波士頓郊區平均值',
     values: {
@@ -170,12 +203,48 @@ const PRESETS: Record<string, { label: string; values: Record<string, number> }>
   },
 };
 
-export default function Dashboard() {
+const STARTUP_PRESETS: PresetMap = {
+  average: {
+    label: '平均支出',
+    values: {
+      'R&D Spend': 77687.85,
+      Administration: 121142.92,
+      'Marketing Spend': 235747.08,
+    },
+  },
+  growth: {
+    label: '成長型投入',
+    values: {
+      'R&D Spend': 145000,
+      Administration: 125000,
+      'Marketing Spend': 390000,
+    },
+  },
+  lean: {
+    label: '精實型投入',
+    values: {
+      'R&D Spend': 25000,
+      Administration: 80000,
+      'Marketing Spend': 60000,
+    },
+  },
+};
+
+type ProblemKey = 'startup' | 'boston';
+
+function ProjectDashboard({ project }: { project: ProblemKey }) {
+  const isStartup = project === 'startup';
+  const modelData = isStartup ? startupModelData : bostonModelData;
+  const presets = isStartup ? STARTUP_PRESETS : BOSTON_PRESETS;
   const selectedFeatures = modelData.selected_features;
   const coefficients = modelData.coefficients;
   const intercept = modelData.intercept;
   const scalerMean = modelData.scaler_mean;
   const scalerScale = modelData.scaler_scale;
+  const targetScale = isStartup ? 1 : 1000;
+  const rmseInModelUnits = isStartup ? startupModelData.test_metrics.rmse : 4.939;
+  const targetMin = isStartup ? 14681.4 : 5.0;
+  const targetMax = isStartup ? 192261.83 : 50.0;
 
   // State of feature input values initialized to mean
   const [featureValues, setFeatureValues] = useState<Record<string, number>>(() => {
@@ -215,19 +284,19 @@ export default function Dashboard() {
       });
     });
 
-    const dollarPrice = predMedv * 1000;
-    const lowerDollar = (predMedv - 4.939) * 1000;
-    const upperDollar = (predMedv + 4.939) * 1000;
+    const dollarPrice = predMedv * targetScale;
+    const lowerDollar = (predMedv - rmseInModelUnits) * targetScale;
+    const upperDollar = (predMedv + rmseInModelUnits) * targetScale;
 
     return {
       medv: predMedv,
       dollarPrice: Math.round(dollarPrice),
       lowerDollar: Math.round(lowerDollar),
       upperDollar: Math.round(upperDollar),
-      isOutsideDatasetRange: predMedv < 5.0 || predMedv > 50.0,
+      isOutsideDatasetRange: predMedv < targetMin || predMedv > targetMax,
       contributions: contributions.sort((a, b) => Math.abs(b.contrib) - Math.abs(a.contrib)),
     };
-  }, [featureValues, selectedFeatures, coefficients, intercept, scalerMean, scalerScale]);
+  }, [featureValues, selectedFeatures, coefficients, intercept, scalerMean, scalerScale, targetScale, rmseInModelUnits, targetMin, targetMax]);
 
   const handleSliderChange = (feat: string, val: number) => {
     setSelectedPreset('custom');
@@ -239,7 +308,7 @@ export default function Dashboard() {
 
   const handlePresetSelect = (presetKey: string) => {
     setSelectedPreset(presetKey);
-    const preset = PRESETS[presetKey];
+    const preset = presets[presetKey];
     if (preset) {
       setFeatureValues(preset.values);
     }
@@ -266,20 +335,22 @@ export default function Dashboard() {
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 12px', borderRadius: '9999px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', marginBottom: '12px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }}></span>
               <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Kaggle 迴歸分析專題 2 • Boston Housing
+                {isStartup ? 'Kaggle 迴歸分析專題 1 • 50 Startups' : 'Kaggle 迴歸分析專題 2 • Boston Housing'}
               </span>
             </div>
             <h1 style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.02em', background: 'linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '8px' }}>
-              波士頓住宅價值預測
+              {isStartup ? '50 家新創公司利潤預測' : '波士頓住宅價值預測'}
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', maxWidth: '780px' }}>
-              使用多元線性迴歸（Multiple Linear Regression）模型預測波士頓郊區住宅價格中位數；模型透過 8,191 組特徵子集合的完整交叉驗證，選出最佳的 10 個預測特徵。
+              {isStartup
+                ? '使用多元線性迴歸（Multiple Linear Regression）模型，根據研發、行政管理與行銷支出預測新創公司的年度利潤；最佳模型由五種特徵選擇方法與五折交叉驗證選出。'
+                : '使用多元線性迴歸（Multiple Linear Regression）模型預測波士頓郊區住宅價格中位數；模型透過 8,191 組特徵子集合的完整交叉驗證，選出最佳的 10 個預測特徵。'}
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>預設情境：</span>
-            {Object.entries(PRESETS).map(([key, item]) => (
+            {Object.entries(presets).map(([key, item]) => (
               <button
                 key={key}
                 onClick={() => handlePresetSelect(key)}
@@ -300,10 +371,10 @@ export default function Dashboard() {
             測試集判定係數（R²）
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 800, color: '#38bdf8' }} className="mono">
-            0.6673
+            {isStartup ? '0.9001' : '0.6673'}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            可解釋 66.7% 的樣本外價格變異
+            {isStartup ? '可解釋 90.0% 的樣本外利潤變異' : '可解釋 66.7% 的樣本外價格變異'}
           </div>
         </div>
 
@@ -312,10 +383,10 @@ export default function Dashboard() {
             測試集平均絕對誤差（MAE）
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 800, color: '#34d399' }} className="mono">
-            $3,185
+            {isStartup ? '$6,979' : '$3,185'}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            平均絕對誤差為 3.185k 美元
+            {isStartup ? '平均絕對誤差為 6,979 美元' : '平均絕對誤差為 3.185k 美元'}
           </div>
         </div>
 
@@ -324,10 +395,10 @@ export default function Dashboard() {
             五折交叉驗證均方根誤差（RMSE）
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fbbf24' }} className="mono">
-            4.8416
+            {isStartup ? '$9,104.68' : '4.8416'}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            8,191 組特徵子集合中的最低值
+            {isStartup ? '五種方法比較後的最佳三特徵模型' : '8,191 組特徵子集合中的最低值'}
           </div>
         </div>
 
@@ -336,10 +407,10 @@ export default function Dashboard() {
             模型複雜度
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 800, color: '#a78bfa' }} className="mono">
-            10 / 13
+            {isStartup ? '3 / 4' : '10 / 13'}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            精簡特徵集合（移除 INDUS、CHAS、AGE）
+            {isStartup ? '精簡特徵集合（移除 State）' : '精簡特徵集合（移除 INDUS、CHAS、AGE）'}
           </div>
         </div>
       </section>
@@ -353,7 +424,7 @@ export default function Dashboard() {
             <div>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>互動式特徵控制</h2>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                調整住宅、社區與基礎建設參數，即時觀察模型估值變化。
+                {isStartup ? '調整三項營運支出，即時觀察模型預測的年度利潤。' : '調整住宅、社區與基礎建設參數，即時觀察模型估值變化。'}
               </p>
             </div>
             <button
@@ -417,7 +488,7 @@ export default function Dashboard() {
             <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '160px', height: '160px', background: 'radial-gradient(circle, rgba(6, 182, 212, 0.25) 0%, transparent 70%)', pointerEvents: 'none' }}></div>
             
             <div style={{ fontSize: '0.82rem', color: '#38bdf8', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '8px' }}>
-              即時模型估值
+              {isStartup ? '即時利潤預測' : '即時模型估值'}
             </div>
             
             <div style={{ fontSize: '3rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: '6px' }} className="mono">
@@ -426,7 +497,7 @@ export default function Dashboard() {
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <span className="mono" style={{ fontSize: '1.1rem', color: '#94a3b8', fontWeight: 600 }}>
-                MEDV: {prediction.medv.toFixed(2)}k
+                {isStartup ? `Profit：$${prediction.medv.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `MEDV：${prediction.medv.toFixed(2)}k`}
               </span>
               <span style={{ fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
                 瀏覽器即時計算
@@ -441,12 +512,14 @@ export default function Dashboard() {
                 </span>
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                此範圍為預測值加減一次測試集 RMSE（4,939 美元），不是 95% 信賴區間。
+                此範圍為預測值加減一次測試集 RMSE（{Math.round(rmseInModelUnits * targetScale).toLocaleString()} 美元），不是 95% 信賴區間。
               </div>
             </div>
             {prediction.isOutsideDatasetRange && (
               <p className="extrapolation-warning">
-                此結果超出資料集 MEDV 的 5k–50k 美元範圍，屬於外插預測，解讀時請特別留意。
+                {isStartup
+                  ? '此結果超出資料集 Profit 的 14,681–192,262 美元範圍，屬於外插預測，解讀時請特別留意。'
+                  : '此結果超出資料集 MEDV 的 5k–50k 美元範圍，屬於外插預測，解讀時請特別留意。'}
               </p>
             )}
           </div>
@@ -457,14 +530,15 @@ export default function Dashboard() {
               特徵影響拆解（相對基準平均值的 Δ）
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              基準截距 = ${Math.round(intercept * 1000).toLocaleString()}（MEDV {intercept.toFixed(2)}k）。長條顯示各標準化特徵對預測值的推動幅度（$w_j \times z_j$）。
+              基準截距 = ${Math.round(intercept * targetScale).toLocaleString()}（{isStartup ? `Profit ${Math.round(intercept).toLocaleString()}` : `MEDV ${intercept.toFixed(2)}k`}）。長條顯示各標準化特徵對預測值的推動幅度（$w_j \times z_j$）。
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }} className="custom-scrollbar">
               {prediction.contributions.map((item) => {
                 const isPos = item.contrib >= 0;
-                const absDollar = Math.round(Math.abs(item.contrib) * 1000);
-                const percentBar = Math.min(100, (Math.abs(item.contrib) / 8.0) * 100);
+                const absDollar = Math.round(Math.abs(item.contrib) * targetScale);
+                const contributionReference = isStartup ? 40000 : 8;
+                const percentBar = Math.min(100, (Math.abs(item.contrib) / contributionReference) * 100);
 
                 return (
                   <div key={item.feature} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -509,25 +583,35 @@ export default function Dashboard() {
         <div className="formula-grid">
           <div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', marginBottom: '12px' }}>
-              模型僅使用訓練集（N=404，seed 42）估計權重與標準化參數，再進行預測，以確保<strong>沒有資料洩漏（data leakage）</strong>：
+              模型僅使用訓練集（N={isStartup ? '40' : '404'}，seed 42）估計權重與標準化參數，再進行預測，以確保<strong>沒有資料洩漏（data leakage）</strong>：
             </p>
             <div style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.05)' }} className="mono">
-              <span style={{ color: '#38bdf8' }}>MEDV_hat</span> = β₀ + Σ [ βⱼ · ((xⱼ - μⱼ) / σⱼ) ]<br />
+              <span style={{ color: '#38bdf8' }}>{isStartup ? 'Profit_hat' : 'MEDV_hat'}</span> = β₀ + Σ [ βⱼ · ((xⱼ - μⱼ) / σⱼ) ]<br />
               <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>
-                其中 β₀ = 22.80；μⱼ 與 σⱼ 分別為訓練集特徵的平均值與標準差。
+                其中 β₀ = {isStartup ? '115,651.72' : '22.80'}；μⱼ 與 σⱼ 分別為訓練集特徵的平均值與標準差。
               </span>
             </div>
           </div>
 
           <div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', marginBottom: '12px' }}>
-              <strong>特徵選擇依據：</strong>針對 13 個原始特徵的 8,191 種可能組合進行五折交叉驗證後，移除 <code>INDUS</code>、<code>CHAS</code> 與 <code>AGE</code> 可得到最低的驗證 RMSE：
+              <strong>特徵選擇依據：</strong>{isStartup
+                ? '比較五種特徵選擇方法並進行五折交叉驗證後，由研發、行政管理與行銷支出組成的三特徵模型得到最低的驗證 RMSE：'
+                : <>針對 13 個原始特徵的 8,191 種可能組合進行五折交叉驗證後，移除 <code>INDUS</code>、<code>CHAS</code> 與 <code>AGE</code> 可得到最低的驗證 RMSE：</>}
             </p>
-            <ul style={{ color: 'var(--text-muted)', fontSize: '0.85rem', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <li><code>INDUS</code>（工業用地比例）與 <code>TAX</code>、<code>NOX</code> 存在較高共線性（r &gt; 0.70）。</li>
-              <li>加入距離特徵 <code>DIS</code> 後，<code>AGE</code>（老屋比例）提供的資訊較為重複。</li>
-              <li><code>CHAS</code>（是否鄰近 Charles River）在 93% 的資料中數值相同，變異很低。</li>
-            </ul>
+            {isStartup ? (
+              <ul style={{ color: 'var(--text-muted)', fontSize: '0.85rem', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <li><code>R&amp;D Spend</code> 是利潤預測中影響最大的正向特徵。</li>
+                <li><code>Marketing Spend</code> 提供額外的正向預測資訊。</li>
+                <li><code>State</code> 未改善交叉驗證表現，因此未納入最終模型。</li>
+              </ul>
+            ) : (
+              <ul style={{ color: 'var(--text-muted)', fontSize: '0.85rem', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <li><code>INDUS</code>（工業用地比例）與 <code>TAX</code>、<code>NOX</code> 存在較高共線性（r &gt; 0.70）。</li>
+                <li>加入距離特徵 <code>DIS</code> 後，<code>AGE</code>（老屋比例）提供的資訊較為重複。</li>
+                <li><code>CHAS</code>（是否鄰近 Charles River）在 93% 的資料中數值相同，變異很低。</li>
+              </ul>
+            )}
           </div>
         </div>
       </section>
@@ -589,12 +673,12 @@ export default function Dashboard() {
           {activeTab === 'comparison' && (
             <div>
               <img
-                src={imagePath('feature_selection_comparison.png')}
+                src={imagePath(isStartup ? 'project1/feature_selection_comparison.png' : 'feature_selection_comparison.png')}
                 alt="五種特徵選擇方法比較圖"
                 style={{ width: '100%', maxHeight: '600px', objectFit: 'contain', borderRadius: '8px' }}
               />
               <p style={{ marginTop: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                <strong>圖 1：</strong>比較五種特徵選擇策略：最小絕對壓縮與選擇運算子（Lasso）、前向循序特徵選擇（Forward SFS）、遞迴特徵消除（RFE）、彈性網路（ElasticNet）與完整搜尋（Exhaustive Search），並呈現 1 至 13 個特徵下的五折交叉驗證 RMSE（左）與 R²（右）。
+                <strong>圖 1：</strong>比較五種特徵選擇策略：最小絕對壓縮與選擇運算子（Lasso）、前向循序特徵選擇（Forward SFS）、遞迴特徵消除（RFE）、彈性網路（ElasticNet）與完整搜尋（Exhaustive Search），並呈現 1 至 {isStartup ? '4' : '13'} 個特徵下的五折交叉驗證 RMSE（左）與 R²（右）。
               </p>
             </div>
           )}
@@ -602,12 +686,12 @@ export default function Dashboard() {
           {activeTab === 'actual_pred' && (
             <div>
               <img
-                src={imagePath('actual_vs_predicted.png')}
+                src={imagePath(isStartup ? 'project1/actual_vs_predicted.png' : 'actual_vs_predicted.png')}
                 alt="實際值與預測值比較圖"
                 style={{ width: '100%', maxHeight: '560px', objectFit: 'contain', borderRadius: '8px' }}
               />
               <p style={{ marginTop: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                <strong>圖 2：</strong>測試集預測值與實際住宅價格中位數的比較；45 度線代表完全正確的預測（R² = 0.6673）。
+                <strong>圖 2：</strong>測試集預測值與實際{isStartup ? '年度利潤' : '住宅價格中位數'}的比較；45 度線代表完全正確的預測（R² = {isStartup ? '0.9001' : '0.6673'}）。
               </p>
             </div>
           )}
@@ -615,7 +699,7 @@ export default function Dashboard() {
           {activeTab === 'residuals' && (
             <div>
               <img
-                src={imagePath('residual_distribution.png')}
+                src={imagePath(isStartup ? 'project1/residual_distribution.png' : 'residual_distribution.png')}
                 alt="殘差分布與診斷圖"
                 style={{ width: '100%', maxHeight: '560px', objectFit: 'contain', borderRadius: '8px' }}
               />
@@ -628,12 +712,12 @@ export default function Dashboard() {
           {activeTab === 'coefficients' && (
             <div>
               <img
-                src={imagePath('model_coefficients.png')}
+                src={imagePath(isStartup ? 'project1/model_coefficients.png' : 'model_coefficients.png')}
                 alt="模型標準化係數圖"
                 style={{ width: '100%', maxHeight: '560px', objectFit: 'contain', borderRadius: '8px' }}
               />
               <p style={{ marginTop: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                <strong>圖 4：</strong>10 個入選特徵的標準化係數，顯示各特徵影響方向與相對權重。
+                <strong>圖 4：</strong>{isStartup ? '3' : '10'} 個入選特徵的標準化係數，顯示各特徵影響方向與相對權重。
               </p>
             </div>
           )}
@@ -641,12 +725,12 @@ export default function Dashboard() {
           {activeTab === 'heatmap' && (
             <div>
               <img
-                src={imagePath('correlation_heatmap.png')}
+                src={imagePath(isStartup ? 'project1/correlation_heatmap.png' : 'correlation_heatmap.png')}
                 alt="相關係數熱圖"
                 style={{ width: '100%', maxHeight: '600px', objectFit: 'contain', borderRadius: '8px' }}
               />
               <p style={{ marginTop: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                <strong>圖 5：</strong>13 個特徵與目標變數 MEDV 的下三角 Pearson 相關係數矩陣。
+                <strong>圖 5：</strong>{isStartup ? '三項數值支出與目標變數 Profit' : '13 個特徵與目標變數 MEDV'}的下三角 Pearson 相關係數矩陣。
               </p>
             </div>
           )}
@@ -656,12 +740,34 @@ export default function Dashboard() {
       {/* Footer */}
       <footer style={{ borderTop: '1px solid var(--border-color)', paddingTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
         <div>
-          Kaggle 多元線性迴歸專題 • 成果展示網站
+          Kaggle 多元線性迴歸雙專題 • 成果展示網站
         </div>
         <div>
           Next.js 14 • TypeScript • 無資料洩漏的機器學習流程（ML Pipeline）• GitHub Pages
         </div>
       </footer>
     </main>
+  );
+}
+
+export default function Dashboard() {
+  const [selectedProblem, setSelectedProblem] = useState<ProblemKey>('boston');
+
+  return (
+    <>
+      <div className="problem-switcher-shell">
+        <label htmlFor="problem-select">問題選擇</label>
+        <select
+          id="problem-select"
+          value={selectedProblem}
+          onChange={(event) => setSelectedProblem(event.target.value as ProblemKey)}
+        >
+          <option value="startup">Project 1：50 Startups</option>
+          <option value="boston">Project 2：Boston Housing</option>
+        </select>
+        <span>切換後會同步更新模型、輸入特徵、評估指標與圖表。</span>
+      </div>
+      <ProjectDashboard key={selectedProblem} project={selectedProblem} />
+    </>
   );
 }
